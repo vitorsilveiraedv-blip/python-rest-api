@@ -17,7 +17,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Administrator-only assignment to active agents.
 - Validated ticket lifecycle transitions and requester close-out of resolved tickets.
 - Ticket comments and append-only audit event records.
-- Generic authentication errors that do not reveal whether an account exists.
+- Generic authentication errors and dummy Argon2 verification for unknown emails to reduce timing-based account enumeration.
 - Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service and validated against PostgreSQL 16 in CI.
 - Dockerfile and Docker Compose configuration for local PostgreSQL.
 - Pytest integration tests and Ruff linting in GitHub Actions.
