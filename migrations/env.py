@@ -3,11 +3,11 @@
 from logging.config import fileConfig
 
 from alembic import context
+from service_desk_api.models.auth_session import AuthSession  # noqa: F401
 from sqlalchemy import engine_from_config, pool
 
 from service_desk_api.config import get_settings
 from service_desk_api.database import Base
-from service_desk_api.models.auth_session import AuthSession  # noqa: F401
 from service_desk_api.models.login_rate_limit import LoginRateLimit  # noqa: F401
 from service_desk_api.models.ticket import Ticket, TicketComment, TicketEvent  # noqa: F401
 from service_desk_api.models.user import User  # noqa: F401
