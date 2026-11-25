@@ -69,11 +69,10 @@ def test_requesters_cannot_view_another_users_ticket(client):
 
 
 def test_agent_can_progress_ticket_and_requester_can_close_resolved_ticket(client):
-    requester, requester_headers = register_and_login(client, "owner@example.com")
+    _, requester_headers = register_and_login(client, "owner@example.com")
     ticket = create_ticket(client, requester_headers)
     agent, agent_headers = register_and_login(client, "agent@example.com")
     set_role(client, agent["id"], UserRole.AGENT)
-    agent, agent_headers = register_and_login(client, "agent@example.com")
 
     for next_status in ("in_progress", "waiting_for_requester", "in_progress", "resolved"):
         response = client.patch(
@@ -119,7 +118,6 @@ def test_only_administrator_can_assign_and_assignee_must_be_agent(client):
 
     admin, admin_headers = register_and_login(client, "admin@example.com")
     set_role(client, admin["id"], UserRole.ADMINISTRATOR)
-    admin, admin_headers = register_and_login(client, "admin@example.com")
     assigned = client.patch(
         f"/api/v1/tickets/{ticket['id']}/assignment",
         headers=admin_headers,
