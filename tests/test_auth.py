@@ -63,3 +63,12 @@ def test_invalid_token_is_rejected(client):
         headers={"Authorization": "Bearer definitely-not-a-valid-token"},
     )
     assert response.status_code == 401
+
+
+def test_login_uses_same_generic_error_for_unknown_email(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "unknown@example.com", "password": "a-very-long-test-password"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid email or password"
