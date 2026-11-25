@@ -2,7 +2,7 @@
 
 A Python REST API for IT service desk operations, developed as a modular monolith with clear boundaries between HTTP delivery, application logic, domain rules and persistence.
 
-> **Project status:** authentication and ticket workflow milestones implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Opaque rotating refresh tokens and session revocation are implemented. Ticket creation, visibility rules, assignment, lifecycle transitions, comments and audit history are implemented.
+> **Project status:** authentication and ticket workflow milestones implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Ticket creation, visibility rules, assignment, lifecycle transitions, comments and audit history are implemented.
 
 ## Implemented capabilities
 - FastAPI application factory and versioned API routing.
@@ -12,7 +12,6 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Requester registration with normalized unique email addresses and database-safe handling of concurrent duplicate registrations.
 - Argon2 password hashing; plaintext passwords are never stored.
 - JWT access tokens validated for signature, issuer, audience, expiry and token type.
-- Opaque refresh tokens stored only as SHA-256 hashes, rotated on use and revocable by session family.
 - Persistent login rate limiting by hashed email and client IP.
 - Authenticated `/auth/me` endpoint and role-based authorization.
 - Ticket creation, role-aware listing, pagination, status/priority filters and detail visibility.
@@ -22,7 +21,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Generic authentication errors and dummy Argon2 verification for unknown emails to reduce timing-based account enumeration.
 - Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service and validated against PostgreSQL 16 in CI.
 - Dockerfile and Docker Compose configuration for local PostgreSQL.
-- Pytest integration tests against an isolated PostgreSQL 16 database and Ruff linting in GitHub Actions.
+- Pytest integration tests using SQLite and Ruff linting in GitHub Actions; PostgreSQL 16 migrations are validated separately in CI.
 
 ## API endpoints
 | Method | Endpoint | Purpose |
@@ -30,9 +29,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 | GET | `/api/v1/health/live` | Process liveness |
 | GET | `/api/v1/health/ready` | Database readiness |
 | POST | `/api/v1/auth/register` | Register a requester |
-| POST | `/api/v1/auth/login` | Obtain access and refresh tokens |
-| POST | `/api/v1/auth/refresh` | Rotate a refresh token |
-| POST | `/api/v1/auth/logout` | Revoke a refresh-token session |
+| POST | `/api/v1/auth/login` | Obtain an access token |
 | GET | `/api/v1/auth/me` | Retrieve the authenticated profile |
 | POST | `/api/v1/tickets` | Create a support ticket |
 | GET | `/api/v1/tickets` | List visible tickets with `page`, `page_size`, `ticket_status` and `priority` filters |
@@ -46,9 +43,6 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Access tokens are short-lived and include issuer, audience, subject, expiry and token identifier claims.
 - Production startup rejects the development JWT secret. Set a unique secret of at least 32 characters using `JWT_SECRET_KEY`.
 - The registration endpoint assigns the requester role. Privileged roles must never be self-assigned through public input.
-- Refresh tokens are random opaque values. Only SHA-256 digests are stored; tokens rotate on every refresh.
-- Reuse of a rotated refresh token revokes its entire session family.
-- Logout revokes the refresh-token family. Already-issued access tokens remain valid until their short expiry; account deactivation invalidates them immediately.
 - Login rate limiting defaults to five failed attempts per email and thirty per IP in fifteen minutes.
 - Database schema changes are managed through Alembic. Apply migrations with `alembic upgrade head`; local Docker Compose runs this before starting the API.
 
@@ -82,7 +76,7 @@ pytest --cov=service_desk_api --cov-report=term-missing
 - Never store plaintext passwords or expose secrets in logs.
 - Version database changes through migrations.
 - Test success paths, invalid input, permissions and dependency failures.
-- CI validates Alembic migrations and runs the full application integration suite against PostgreSQL 16 using a dedicated test database. SQLite remains available as a lightweight local test option.
+- CI validates Alembic migrations against PostgreSQL 16 and runs the application integration suite using SQLite.
 - Report only verified test and deployment results.
 
 ## License
