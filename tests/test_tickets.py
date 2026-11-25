@@ -210,7 +210,7 @@ def test_agent_cannot_read_ticket_assigned_to_another_agent(client):
 
     _, requester_headers = register_and_login(client, "private-ticket-owner@example.com")
     ticket = create_ticket(client, requester_headers)
-    other_agent, other_agent_headers = register_and_login(
+    other_agent, _ = register_and_login(
         client, "assigned-support-agent@example.com"
     )
     set_role(client, other_agent["id"], UserRole.AGENT)
