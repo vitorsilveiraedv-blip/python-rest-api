@@ -2,7 +2,7 @@
 
 A Python REST API for IT service desk operations, developed as a modular monolith with clear boundaries between HTTP delivery, application logic, domain rules and persistence.
 
-> **Project status:** authentication milestone implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Ticket workflows, persistent refresh-token rotation and audit events remain planned work. Alembic migrations are now configured for the user schema.
+> **Project status:** authentication milestone implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Persistent refresh-token rotation remains planned work. Ticket creation, visibility rules, assignment, lifecycle transitions, comments and audit history are implemented.
 
 ## Implemented capabilities
 - FastAPI application factory and versioned API routing.
@@ -12,9 +12,9 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Requester registration with normalized unique email addresses.
 - Argon2 password hashing; plaintext passwords are never stored.
 - JWT access tokens validated for signature, issuer, audience, expiry and token type.
-- Authenticated `/auth/me` endpoint and reusable role-based authorization dependency.
+- Authenticated `/auth/me` endpoint and role-based authorization.\n- Ticket creation, role-aware listing and detail visibility.\n- Administrator-only assignment to active agents.\n- Validated ticket lifecycle transitions and requester close-out of resolved tickets.\n- Ticket comments and append-only audit event records.
 - Generic authentication errors that do not reveal whether an account exists.
-- Versioned Alembic migrations for the user schema, applied automatically by the local Compose API service.\n- Dockerfile and Docker Compose configuration for local PostgreSQL.
+- Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service.\n- Dockerfile and Docker Compose configuration for local PostgreSQL.
 - Pytest integration tests and Ruff linting in GitHub Actions.
 
 ## API endpoints
@@ -24,7 +24,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 | GET | `/api/v1/health/ready` | Database readiness |
 | POST | `/api/v1/auth/register` | Register a requester |
 | POST | `/api/v1/auth/login` | Obtain an access token |
-| GET | `/api/v1/auth/me` | Retrieve the authenticated profile |
+| GET | `/api/v1/auth/me` | Retrieve the authenticated profile |\n| POST | `/api/v1/tickets` | Create a support ticket |\n| GET | `/api/v1/tickets` | List tickets visible to the caller |\n| GET | `/api/v1/tickets/{id}` | Get ticket, comments and audit history |\n| POST | `/api/v1/tickets/{id}/comments` | Add a comment |\n| PATCH | `/api/v1/tickets/{id}/assignment` | Assign an agent (administrator) |\n| PATCH | `/api/v1/tickets/{id}/status` | Apply a permitted lifecycle transition |
 
 ## Security notes
 - Passwords are hashed using Argon2 through pwdlib.
