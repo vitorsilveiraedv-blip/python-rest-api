@@ -2,14 +2,13 @@
 
 import uuid
 from datetime import datetime
+from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, Enum, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from service_desk_api.database import Base
 
-
-from enum import StrEnum
 
 
 class UserRole(StrEnum):
