@@ -33,5 +33,5 @@ Requesters can create and view their own tickets. Agents can view tickets assign
 - [x] Argon2 password hashing and JWT authentication
 - [x] Active-account checks and login rate limiting
 - [x] Ticket lifecycle, visibility, assignment and audit events
-- [x] PostgreSQL migration validation in CI; application integration tests currently use SQLite
+- [x] PostgreSQL migration validation and application integration tests in CI
 - [ ] Operational metrics, alerting and production deployment hardening
