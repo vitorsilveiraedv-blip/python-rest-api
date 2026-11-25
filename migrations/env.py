@@ -3,7 +3,6 @@
 from logging.config import fileConfig
 
 from alembic import context
-from service_desk_api.models.auth_session import AuthSession  # noqa: F401
 from sqlalchemy import engine_from_config, pool
 
 from service_desk_api.config import get_settings
