@@ -61,6 +61,13 @@ class TicketEventRead(BaseModel):
     created_at: datetime
 
 
+class TicketPage(BaseModel):
+    items: list[TicketRead]
+    total: int
+    page: int
+    page_size: int
+
+
 class TicketDetail(TicketRead):
     comments: list[TicketCommentRead]
     events: list[TicketEventRead]
