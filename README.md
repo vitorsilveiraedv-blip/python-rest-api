@@ -12,9 +12,14 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Requester registration with normalized unique email addresses.
 - Argon2 password hashing; plaintext passwords are never stored.
 - JWT access tokens validated for signature, issuer, audience, expiry and token type.
-- Authenticated `/auth/me` endpoint and role-based authorization.\n- Ticket creation, role-aware listing, pagination, status/priority filters and detail visibility.\n- Administrator-only assignment to active agents.\n- Validated ticket lifecycle transitions and requester close-out of resolved tickets.\n- Ticket comments and append-only audit event records.
+- Authenticated `/auth/me` endpoint and role-based authorization.
+- Ticket creation, role-aware listing, pagination, status/priority filters and detail visibility.
+- Administrator-only assignment to active agents.
+- Validated ticket lifecycle transitions and requester close-out of resolved tickets.
+- Ticket comments and append-only audit event records.
 - Generic authentication errors that do not reveal whether an account exists.
-- Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service.\n- Dockerfile and Docker Compose configuration for local PostgreSQL.
+- Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service.
+- Dockerfile and Docker Compose configuration for local PostgreSQL.
 - Pytest integration tests and Ruff linting in GitHub Actions.
 
 ## API endpoints
@@ -24,7 +29,13 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 | GET | `/api/v1/health/ready` | Database readiness |
 | POST | `/api/v1/auth/register` | Register a requester |
 | POST | `/api/v1/auth/login` | Obtain an access token |
-| GET | `/api/v1/auth/me` | Retrieve the authenticated profile |\n| POST | `/api/v1/tickets` | Create a support ticket |\n| GET | `/api/v1/tickets` | List visible tickets with `page`, `page_size`, `ticket_status` and `priority` filters |\n| GET | `/api/v1/tickets/{id}` | Get ticket, comments and audit history |\n| POST | `/api/v1/tickets/{id}/comments` | Add a comment |\n| PATCH | `/api/v1/tickets/{id}/assignment` | Assign an agent (administrator) |\n| PATCH | `/api/v1/tickets/{id}/status` | Apply a permitted lifecycle transition |
+| GET | `/api/v1/auth/me` | Retrieve the authenticated profile |
+| POST | `/api/v1/tickets` | Create a support ticket |
+| GET | `/api/v1/tickets` | List visible tickets with `page`, `page_size`, `ticket_status` and `priority` filters |
+| GET | `/api/v1/tickets/{id}` | Get ticket, comments and audit history |
+| POST | `/api/v1/tickets/{id}/comments` | Add a comment |
+| PATCH | `/api/v1/tickets/{id}/assignment` | Assign an agent (administrator) |
+| PATCH | `/api/v1/tickets/{id}/status` | Apply a permitted lifecycle transition |
 
 ## Security notes
 - Passwords are hashed using Argon2 through pwdlib.
