@@ -161,3 +161,103 @@ def test_ticket_listing_rejects_invalid_pagination(client):
     response = client.get("/api/v1/tickets?page=0&page_size=101", headers=headers)
     assert response.status_code == 422
 
+def test_agents_only_list_unassigned_and_their_own_tickets(client):
+    from service_desk_api.models.user import UserRole
+
+    _, requester_headers = register_and_login(client, "visibility-owner@example.com")
+    first_ticket = create_ticket(client, requester_headers)
+    second_response = client.post(
+        "/api/v1/tickets",
+        headers=requester_headers,
+        json={
+            "title": "VPN connection fails",
+            "description": "The VPN client disconnects immediately after login.",
+            "priority": "normal",
+        },
+    )
+    assert second_response.status_code == 201
+    second_ticket = second_response.json()
+
+    first_agent, first_agent_headers = register_and_login(
+        client, "first-support-agent@example.com"
+    )
+    second_agent, _ = register_and_login(client, "second-support-agent@example.com")
+    set_role(client, first_agent["id"], UserRole.AGENT)
+    set_role(client, second_agent["id"], UserRole.AGENT)
+
+    admin, admin_headers = register_and_login(client, "visibility-admin@example.com")
+    set_role(client, admin["id"], UserRole.ADMINISTRATOR)
+
+    assignment = client.patch(
+        f"/api/v1/tickets/{first_ticket['id']}/assignment",
+        headers=admin_headers,
+        json={"agent_id": second_agent["id"]},
+    )
+    assert assignment.status_code == 200
+
+    agent_listing = client.get("/api/v1/tickets", headers=first_agent_headers)
+    assert agent_listing.status_code == 200
+    assert [item["id"] for item in agent_listing.json()["items"]] == [second_ticket["id"]]
+    assert agent_listing.json()["total"] == 1
+
+    admin_listing = client.get("/api/v1/tickets", headers=admin_headers)
+    assert admin_listing.status_code == 200
+    assert admin_listing.json()["total"] == 2
+
+
+def test_agent_cannot_read_ticket_assigned_to_another_agent(client):
+    from service_desk_api.models.user import UserRole
+
+    _, requester_headers = register_and_login(client, "private-ticket-owner@example.com")
+    ticket = create_ticket(client, requester_headers)
+    other_agent, other_agent_headers = register_and_login(
+        client, "assigned-support-agent@example.com"
+    )
+    set_role(client, other_agent["id"], UserRole.AGENT)
+    current_agent, current_agent_headers = register_and_login(
+        client, "current-support-agent@example.com"
+    )
+    set_role(client, current_agent["id"], UserRole.AGENT)
+
+    admin, admin_headers = register_and_login(client, "assignment-admin@example.com")
+    set_role(client, admin["id"], UserRole.ADMINISTRATOR)
+    assigned = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/assignment",
+        headers=admin_headers,
+        json={"agent_id": other_agent["id"]},
+    )
+    assert assigned.status_code == 200
+
+    hidden = client.get(f"/api/v1/tickets/{ticket['id']}", headers=current_agent_headers)
+    assert hidden.status_code == 404
+
+
+def test_closed_ticket_rejects_new_comments(client):
+    from service_desk_api.models.user import UserRole
+
+    _, requester_headers = register_and_login(client, "closed-ticket-owner@example.com")
+    ticket = create_ticket(client, requester_headers)
+    agent, agent_headers = register_and_login(client, "closer-agent@example.com")
+    set_role(client, agent["id"], UserRole.AGENT)
+
+    for next_status in ("in_progress", "resolved"):
+        changed = client.patch(
+            f"/api/v1/tickets/{ticket['id']}/status",
+            headers=agent_headers,
+            json={"status": next_status},
+        )
+        assert changed.status_code == 200
+
+    closed = client.patch(
+        f"/api/v1/tickets/{ticket['id']}/status",
+        headers=requester_headers,
+        json={"status": "closed"},
+    )
+    assert closed.status_code == 200
+
+    comment = client.post(
+        f"/api/v1/tickets/{ticket['id']}/comments",
+        headers=requester_headers,
+        json={"body": "This should not be accepted after closure."},
+    )
+    assert comment.status_code == 409
