@@ -2,7 +2,7 @@
 
 A Python REST API for IT service desk operations, developed as a modular monolith with clear boundaries between HTTP delivery, application logic, domain rules and persistence.
 
-> **Project status:** authentication milestone implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Ticket workflows, persistent refresh-token rotation, audit events and database migrations remain planned work.
+> **Project status:** authentication milestone implemented. The API supports requester registration, Argon2 password hashing, signed short-lived JWT access tokens, authenticated profile retrieval and role authorization dependencies. Ticket workflows, persistent refresh-token rotation and audit events remain planned work. Alembic migrations are now configured for the user schema.
 
 ## Implemented capabilities
 - FastAPI application factory and versioned API routing.
@@ -14,7 +14,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - JWT access tokens validated for signature, issuer, audience, expiry and token type.
 - Authenticated `/auth/me` endpoint and reusable role-based authorization dependency.
 - Generic authentication errors that do not reveal whether an account exists.
-- Dockerfile and Docker Compose configuration for local PostgreSQL.
+- Versioned Alembic migrations for the user schema, applied automatically by the local Compose API service.\n- Dockerfile and Docker Compose configuration for local PostgreSQL.
 - Pytest integration tests and Ruff linting in GitHub Actions.
 
 ## API endpoints
@@ -32,7 +32,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Production startup rejects the development JWT secret. Set a unique secret of at least 32 characters using `JWT_SECRET_KEY`.
 - The registration endpoint assigns the requester role. Privileged roles must never be self-assigned through public input.
 - Access tokens are currently stateless and there is no refresh-token or revocation endpoint yet.
-- Versioned Alembic migrations are a next milestone.
+- Database schema changes are managed through Alembic. Apply migrations with `alembic upgrade head`; local Docker Compose runs this before starting the API.
 
 ## Technology
 Python 3.12+, FastAPI, Pydantic, SQLAlchemy 2, PostgreSQL, pwdlib/Argon2, PyJWT, Docker, Pytest and GitHub Actions.
