@@ -1,5 +1,7 @@
 """Shared pytest fixtures."""
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -15,11 +17,14 @@ from service_desk_api.models.user import User  # noqa: F401
 @pytest.fixture
 def client() -> TestClient:
     """Create an isolated test client backed by an in-memory SQLite database."""
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    database_url = os.getenv("TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
+    engine_options = {"pool_pre_ping": True}
+    if database_url.startswith("sqlite"):
+        engine_options.update(
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+    engine = create_engine(database_url, **engine_options)
     TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     Base.metadata.create_all(bind=engine)
 
