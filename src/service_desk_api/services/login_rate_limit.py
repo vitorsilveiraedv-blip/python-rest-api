@@ -5,7 +5,7 @@ import hmac
 from datetime import UTC, datetime, timedelta
 from math import ceil
 
-from sqlalchemy import case, delete, select
+from sqlalchemy import case, delete
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
