@@ -1,6 +1,3 @@
-from service_desk_api.models.user import User, UserRole
-
-
 PASSWORD = "a-very-long-test-password"
 
 
@@ -15,7 +12,9 @@ def register_and_login(client, email: str) -> tuple[dict, dict]:
     return registration.json(), {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
-def set_role(client, user_id: str, role: UserRole) -> None:
+def set_role(client, user_id: str, role) -> None:
+    from service_desk_api.models.user import User
+
     with client.app.state.testing_session_factory() as session:
         user = session.get(User, user_id)
         user.role = role
@@ -70,6 +69,8 @@ def test_agent_can_progress_ticket_and_requester_can_close_resolved_ticket(clien
     _, requester_headers = register_and_login(client, "owner@example.com")
     ticket = create_ticket(client, requester_headers)
     agent, agent_headers = register_and_login(client, "agent@example.com")
+    from service_desk_api.models.user import UserRole
+
     set_role(client, agent["id"], UserRole.AGENT)
 
     for next_status in ("in_progress", "waiting_for_requester", "in_progress", "resolved"):
@@ -115,6 +116,8 @@ def test_only_administrator_can_assign_and_assignee_must_be_agent(client):
     assert denied.status_code == 403
 
     admin, admin_headers = register_and_login(client, "admin@example.com")
+    from service_desk_api.models.user import UserRole
+
     set_role(client, admin["id"], UserRole.ADMINISTRATOR)
     assigned = client.patch(
         f"/api/v1/tickets/{ticket['id']}/assignment",
