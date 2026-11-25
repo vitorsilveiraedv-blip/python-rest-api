@@ -1,6 +1,7 @@
 """Application services for user registration and authentication."""
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from service_desk_api.models.user import User, UserRole
@@ -32,7 +33,14 @@ def register_user(
         role=UserRole.REQUESTER,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # A concurrent registration may win after the initial uniqueness check.
+        if db.scalar(select(User).where(User.email == normalized_email)) is not None:
+            raise EmailAlreadyRegisteredError from None
+        raise
     db.refresh(user)
     return user
 
