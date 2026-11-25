@@ -1,3 +1,6 @@
+from uuid import UUID
+
+
 PASSWORD = "a-very-long-test-password"
 
 
@@ -16,7 +19,7 @@ def set_role(client, user_id: str, role) -> None:
     from service_desk_api.models.user import User
 
     with client.app.state.testing_session_factory() as session:
-        user = session.get(User, user_id)
+        user = session.get(User, UUID(user_id))
         user.role = role
         session.commit()
 
