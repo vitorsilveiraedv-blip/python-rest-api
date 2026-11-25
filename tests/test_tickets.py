@@ -103,6 +103,8 @@ def test_requester_cannot_skip_ticket_lifecycle(client):
 
 
 def test_only_administrator_can_assign_and_assignee_must_be_agent(client):
+    from service_desk_api.models.user import UserRole
+
     _, requester_headers = register_and_login(client, "submitter@example.com")
     ticket = create_ticket(client, requester_headers)
     agent, _ = register_and_login(client, "assignee@example.com")
@@ -116,8 +118,6 @@ def test_only_administrator_can_assign_and_assignee_must_be_agent(client):
     assert denied.status_code == 403
 
     admin, admin_headers = register_and_login(client, "admin@example.com")
-    from service_desk_api.models.user import UserRole
-
     set_role(client, admin["id"], UserRole.ADMINISTRATOR)
     assigned = client.patch(
         f"/api/v1/tickets/{ticket['id']}/assignment",
