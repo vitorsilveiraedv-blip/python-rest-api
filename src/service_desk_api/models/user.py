@@ -1,6 +1,5 @@
 """User persistence model."""
 
-import enum
 import uuid
 from datetime import datetime
 
@@ -10,7 +9,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from service_desk_api.database import Base
 
 
-class UserRole(str, enum.Enum):
+from enum import StrEnum
+
+
+class UserRole(StrEnum):
     """Roles supported by the service desk."""
 
     REQUESTER = "requester"
