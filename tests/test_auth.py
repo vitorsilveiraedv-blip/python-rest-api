@@ -227,6 +227,7 @@ def test_logout_revokes_refresh_token(client):
 
 def test_inactive_user_cannot_refresh_session(client):
     from uuid import UUID
+
     from service_desk_api.models.user import User
 
     payload = {"email": "inactive-refresh@example.com", "full_name": "Inactive Refresh",
