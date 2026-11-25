@@ -1,111 +1,38 @@
-# Architecture and Technical Specification
+# Architecture
 
-## Product scope
+## Overview
 
-Service Desk API is a backend for internal IT support operations. It will manage request intake, assignment, status transitions, communication and an auditable history of work.
+The Service Desk API is a modular monolith built with FastAPI, SQLAlchemy 2, Pydantic Settings and PostgreSQL. HTTP endpoints are kept separate from application services and persistence models. The API is versioned under `/api/v1`.
 
-The first release is an API-first modular monolith. This keeps deployment and local development simple while maintaining clear boundaries between transport, application services, domain rules and persistence.
+## Main boundaries
 
-## Proposed technology
+- **HTTP delivery:** route modules validate requests, call application services and translate known application errors into HTTP responses.
+- **Application services:** authentication and ticket workflows enforce business rules independently of HTTP response formatting.
+- **Persistence:** SQLAlchemy models and Alembic migrations define the durable data model.
+- **Configuration and security:** environment-driven settings, Argon2 password hashes and signed JWT access tokens.
 
-- Python 3.12+
-- FastAPI for HTTP routing and OpenAPI documentation
-- Pydantic for request and response validation
-- SQLAlchemy 2 for persistence
-- PostgreSQL for relational data
-- Alembic for schema migrations
-- Pytest and HTTPX for automated tests
-- Docker Compose for local infrastructure
-- GitHub Actions for continuous integration
+## Authentication
 
-## Initial architecture
+Registration creates requester accounts only. Login uses generic credential errors and performs a dummy Argon2 verification for unknown email addresses to reduce timing-based account enumeration. Access tokens are short-lived and include issuer, audience, subject, token type and token identifier claims. Current-user authorization checks the active user record, so deactivation invalidates already-issued access tokens.
 
-```text
-HTTP Client
-    |
-FastAPI / API v1
-    |
-Application Services
-    |
-Domain Rules
-    |
-Repository / SQLAlchemy
-    |
-PostgreSQL
-```
+Failed login attempts are limited using PostgreSQL-backed counters. The system tracks separate HMAC digests for normalized email addresses and client IP addresses, never storing those raw identifiers in the rate-limit table. The default policy allows five failed attempts per email and thirty per IP in a fifteen-minute window. The API returns HTTP 429 and a `Retry-After` header after a budget is exhausted. Successful authentication clears the email counter. Counters older than one day are cleaned during failed-login writes.
 
-The implementation includes application configuration, database session lifecycle, versioned routing, health endpoints, authentication, role-based authorization, ticket lifecycle rules, comments and audit history. CI validates migrations and runs integration tests against PostgreSQL 16.
+The API uses `request.client.host` as the client IP. Deployments behind a reverse proxy must configure trusted proxy handling at the ASGI server or ingress layer; the application must not blindly trust arbitrary forwarded headers.
 
-## Core domain model
+Login rate limiting is a first layer of abuse protection, not a replacement for edge-level controls, monitoring, alerting or credential-stuffing detection. The current access-token design does not include refresh-token rotation or a server-side session registry.
 
-- User: identity, password hash, active state and role.
-- Team: support group responsible for handling requests.
-- Ticket: requester, assignee, team, title, description, priority and status.
-- TicketComment: message authored within a ticket.
-- TicketEvent: append-only record of important ticket changes.
+## Ticket workflow
 
-## Authorization model
-
-- Requester: create tickets and read tickets they are allowed to access.
-- Agent: work on tickets assigned to their team and add internal/public comments according to policy.
-- Administrator: manage users, teams and system-wide settings.
-
-Authorization must be enforced server-side for every resource operation. Hiding UI controls is not a security boundary.
-
-## Ticket lifecycle
-
-```text
-OPEN -> IN_PROGRESS -> WAITING_FOR_REQUESTER -> IN_PROGRESS
-  |             |                         |
-  +----------> RESOLVED <------------------+
-                    |
-                 CLOSED
-```
-
-Transitions will be validated in the domain layer. Invalid transitions must return a consistent client error and must not mutate data.
-
-## Non-functional requirements
-
-- Secrets are loaded from environment variables and never committed.
-- Passwords are stored using a modern password-hashing algorithm, never plaintext.
-- Authentication and authorization are tested independently.
-- Database changes are versioned through migrations.
-- Health endpoints distinguish process liveness from dependency readiness.
-- API errors must not expose stack traces, credentials or database connection details.
-- Automated tests cover normal behavior, invalid input, permissions and failure cases.
-- Logs must avoid passwords, access tokens and sensitive ticket content.
+Requesters can create and view their own tickets. Agents can view tickets assigned to them or currently unassigned. Administrators can view all tickets and assign work to active agents or administrators. Ticket state transitions are validated in the application service, and creation, comments, assignment and status changes produce audit events.
 
 ## Delivery status
 
-### Foundation
-- [x] Application factory, versioned API routing and health endpoints.
-- [x] Docker and local PostgreSQL configuration.
-- [x] Alembic migrations and PostgreSQL 16 migration validation in CI.
-
-### Authentication and authorization
-- [x] Requester registration and Argon2 password hashing.
-- [x] Short-lived JWT access tokens with issuer, audience and expiry validation.
-- [x] Role-based authorization and resource-level access checks.
-- [x] Generic login errors and dummy Argon2 verification for unknown accounts.
-- [x] Concurrent duplicate registration handled through the database uniqueness constraint.
-
-### Ticket workflow
-- [x] Ticket creation, listing, filtering and pagination.
-- [x] Assignment and validated status transitions.
-- [x] Comments and append-only audit events.
-- [x] Requester, agent and administrator visibility rules.
-
-### Remaining before public deployment
-- [ ] Login rate limiting and abuse controls.
-- [ ] Refresh-token rotation and revocation strategy.
-- [ ] Security and dependency review.
-- [ ] Deployment and operational verification in a real target environment.
-
-## Explicit non-goals for the first release
-
-- Microservices.
-- Kubernetes.
-- Distributed event streaming.
-- Multi-region deployment.
-
-These would add operational complexity without a demonstrated need for the initial product.
+- [x] Application factory and versioned routes
+- [x] Environment-based settings and production JWT secret validation
+- [x] PostgreSQL persistence and Alembic migrations
+- [x] Argon2 password hashing and JWT authentication
+- [x] Active-account checks and login rate limiting
+- [x] Ticket lifecycle, visibility, assignment and audit events
+- [x] PostgreSQL-backed CI integration tests
+- [ ] Refresh-token rotation and server-side session revocation
+- [ ] Operational metrics, alerting and production deployment hardening

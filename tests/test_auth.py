@@ -1,5 +1,6 @@
 """Authentication API integration tests."""
 
+
 def test_register_login_and_get_current_user(client):
     registration = client.post(
         "/api/v1/auth/register",
@@ -73,6 +74,7 @@ def test_login_uses_same_generic_error_for_unknown_email(client):
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password"
 
+
 def test_inactive_user_cannot_login_or_keep_using_existing_token(client):
     from uuid import UUID
 
@@ -136,3 +138,55 @@ def test_production_accepts_long_unique_jwt_secret():
     )
     settings.validate_security_settings()
 
+
+def test_login_is_rate_limited_after_five_failed_passwords(client):
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "limited@example.com",
+            "full_name": "Limited User",
+            "password": "a-very-long-test-password",
+        },
+    )
+    for _ in range(5):
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "limited@example.com", "password": "wrong-password"},
+        )
+        assert response.status_code == 401
+
+    blocked = client.post(
+        "/api/v1/auth/login",
+        json={"email": "limited@example.com", "password": "a-very-long-test-password"},
+    )
+    assert blocked.status_code == 429
+    assert int(blocked.headers["retry-after"]) > 0
+    assert blocked.json()["detail"] == "Too many login attempts. Try again later."
+
+
+def test_successful_login_clears_email_failure_counter(client):
+    payload = {
+        "email": "reset-limit@example.com",
+        "full_name": "Reset Limit",
+        "password": "a-very-long-test-password",
+    }
+    client.post("/api/v1/auth/register", json=payload)
+    for _ in range(4):
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": payload["email"], "password": "wrong-password"},
+        )
+        assert response.status_code == 401
+
+    successful = client.post(
+        "/api/v1/auth/login",
+        json={"email": payload["email"], "password": payload["password"]},
+    )
+    assert successful.status_code == 200
+
+    for _ in range(5):
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": payload["email"], "password": "wrong-password"},
+        )
+        assert response.status_code == 401

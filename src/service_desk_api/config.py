@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=20, ge=1, le=1440)
     jwt_issuer: str = "service-desk-api"
     jwt_audience: str = "service-desk-clients"
+    login_email_max_attempts: int = Field(default=5, ge=1, le=100)
+    login_ip_max_attempts: int = Field(default=30, ge=1, le=1000)
+    login_rate_limit_window_seconds: int = Field(default=900, ge=60, le=86400)
 
     def validate_security_settings(self) -> None:
         """Reject insecure development defaults when running in production."""

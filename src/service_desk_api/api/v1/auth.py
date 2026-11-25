@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from service_desk_api.api.dependencies import get_current_user
+from service_desk_api.config import get_settings
 from service_desk_api.database import get_db
 from service_desk_api.models.user import User
 from service_desk_api.schemas.auth import TokenResponse, UserLogin, UserRead, UserRegister
@@ -15,6 +16,12 @@ from service_desk_api.services.auth import (
     InvalidCredentialsError,
     authenticate_user,
     register_user,
+)
+from service_desk_api.services.login_rate_limit import (
+    LoginRateLimitExceeded,
+    check_login_rate_limit,
+    clear_email_failures,
+    record_failed_login,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -47,18 +54,31 @@ def register(
 @router.post("/login", response_model=TokenResponse, summary="Obtain an access token")
 def login(
     payload: UserLogin,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenResponse:
+    email = str(payload.email)
+    client_ip = request.client.host if request.client else "unknown"
     try:
-        user = authenticate_user(db, email=str(payload.email), password=payload.password)
+        check_login_rate_limit(db, email=email, client_ip=client_ip)
+    except LoginRateLimitExceeded as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again later.",
+            headers={"Retry-After": str(error.retry_after)},
+        ) from None
+
+    try:
+        user = authenticate_user(db, email=email, password=payload.password)
     except InvalidCredentialsError:
+        record_failed_login(db, email=email, client_ip=client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
-    from service_desk_api.config import get_settings
 
+    clear_email_failures(db, email=email)
     settings = get_settings()
     return TokenResponse(
         access_token=create_access_token(user),

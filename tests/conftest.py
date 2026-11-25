@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from service_desk_api.database import Base, get_db
 from service_desk_api.main import create_app
+from service_desk_api.models.login_rate_limit import LoginRateLimit  # noqa: F401
 from service_desk_api.models.ticket import Ticket, TicketComment, TicketEvent  # noqa: F401
 from service_desk_api.models.user import User  # noqa: F401
 
