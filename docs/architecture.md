@@ -34,9 +34,9 @@ Repository / SQLAlchemy
 PostgreSQL
 ```
 
-The initial implementation establishes application configuration, database session lifecycle, versioned routing, operational health endpoints and CI. Business modules will be added in later milestones.
+The implementation includes application configuration, database session lifecycle, versioned routing, health endpoints, authentication, role-based authorization, ticket lifecycle rules, comments and audit history. CI validates migrations and runs integration tests against PostgreSQL 16.
 
-## Core domain model (planned)
+## Core domain model
 
 - User: identity, password hash, active state and role.
 - Team: support group responsible for handling requests.
@@ -44,7 +44,7 @@ The initial implementation establishes application configuration, database sessi
 - TicketComment: message authored within a ticket.
 - TicketEvent: append-only record of important ticket changes.
 
-## Authorization model (planned)
+## Authorization model
 
 - Requester: create tickets and read tickets they are allowed to access.
 - Agent: work on tickets assigned to their team and add internal/public comments according to policy.
@@ -52,7 +52,7 @@ The initial implementation establishes application configuration, database sessi
 
 Authorization must be enforced server-side for every resource operation. Hiding UI controls is not a security boundary.
 
-## Ticket lifecycle (planned)
+## Ticket lifecycle
 
 ```text
 OPEN -> IN_PROGRESS -> WAITING_FOR_REQUESTER -> IN_PROGRESS
@@ -75,35 +75,31 @@ Transitions will be validated in the domain layer. Invalid transitions must retu
 - Automated tests cover normal behavior, invalid input, permissions and failure cases.
 - Logs must avoid passwords, access tokens and sensitive ticket content.
 
-## Acceptance criteria
+## Delivery status
 
-### Foundation milestone
-- [x] Application factory and versioned API routing.
-- [x] Liveness endpoint does not require database availability.
-- [x] Readiness endpoint checks database connectivity.
+### Foundation
+- [x] Application factory, versioned API routing and health endpoints.
 - [x] Docker and local PostgreSQL configuration.
-- [x] CI runs lint and tests.
-- [ ] CI run verified as successful.
+- [x] Alembic migrations and PostgreSQL 16 migration validation in CI.
 
-### Authentication milestone
-- [ ] User registration/invitation policy defined.
-- [ ] Secure password hashing.
-- [ ] Short-lived access tokens and refresh strategy.
-- [ ] Role-based authorization tests.
-- [ ] No secret or token leakage in logs.
+### Authentication and authorization
+- [x] Requester registration and Argon2 password hashing.
+- [x] Short-lived JWT access tokens with issuer, audience and expiry validation.
+- [x] Role-based authorization and resource-level access checks.
+- [x] Generic login errors and dummy Argon2 verification for unknown accounts.
+- [x] Concurrent duplicate registration handled through the database uniqueness constraint.
 
-### Ticket workflow milestone
-- [ ] Ticket creation, listing, filtering and pagination.
-- [ ] Assignment and validated status transitions.
-- [ ] Comments and append-only audit events.
-- [ ] Resource-level authorization tests.
+### Ticket workflow
+- [x] Ticket creation, listing, filtering and pagination.
+- [x] Assignment and validated status transitions.
+- [x] Comments and append-only audit events.
+- [x] Requester, agent and administrator visibility rules.
 
-### Release milestone
-- [ ] Alembic migrations and documented migration workflow.
-- [ ] API integration tests using PostgreSQL.
+### Remaining before public deployment
+- [ ] Login rate limiting and abuse controls.
+- [ ] Refresh-token rotation and revocation strategy.
 - [ ] Security and dependency review.
-- [ ] Complete setup and API documentation.
-- [ ] Deployment verified in a real target environment.
+- [ ] Deployment and operational verification in a real target environment.
 
 ## Explicit non-goals for the first release
 
