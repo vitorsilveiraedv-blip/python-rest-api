@@ -1,6 +1,5 @@
 """Ticket workflow integration tests."""
 
-
 from service_desk_api.models.user import User, UserRole
 
 
