@@ -9,7 +9,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Environment-driven settings with Pydantic Settings.
 - SQLAlchemy 2 persistence models and request-scoped database sessions.
 - Liveness and database-readiness health endpoints.
-- Requester registration with normalized unique email addresses.
+- Requester registration with normalized unique email addresses and database-safe handling of concurrent duplicate registrations.
 - Argon2 password hashing; plaintext passwords are never stored.
 - JWT access tokens validated for signature, issuer, audience, expiry and token type.
 - Authenticated `/auth/me` endpoint and role-based authorization.
@@ -20,7 +20,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Generic authentication errors and dummy Argon2 verification for unknown emails to reduce timing-based account enumeration.
 - Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service and validated against PostgreSQL 16 in CI.
 - Dockerfile and Docker Compose configuration for local PostgreSQL.
-- Pytest integration tests and Ruff linting in GitHub Actions.
+- Pytest integration tests against an isolated PostgreSQL 16 database and Ruff linting in GitHub Actions.
 
 ## API endpoints
 | Method | Endpoint | Purpose |
@@ -76,7 +76,7 @@ pytest --cov=service_desk_api --cov-report=term-missing
 - Never store plaintext passwords or expose secrets in logs.
 - Version database changes through migrations.
 - Test success paths, invalid input, permissions and dependency failures.
-- CI validates Alembic migrations against PostgreSQL 16; application integration tests currently use an isolated in-memory SQLite database.
+- CI validates Alembic migrations and runs the full application integration suite against PostgreSQL 16 using a dedicated test database. SQLite remains available as a lightweight local test option.
 - Report only verified test and deployment results.
 
 ## License
