@@ -1,5 +1,7 @@
 """Operational health endpoints."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -16,7 +18,7 @@ def liveness() -> dict[str, str]:
 
 
 @router.get("/health/ready", summary="Check whether the API can reach its database")
-def readiness(db: Session = Depends(get_db)) -> dict[str, str]:
+def readiness(db: Annotated[Session, Depends(get_db)]) -> dict[str, str]:
     """Verify database connectivity before the instance receives traffic."""
     try:
         db.execute(text("SELECT 1"))
