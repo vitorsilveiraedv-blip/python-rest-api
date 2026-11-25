@@ -64,7 +64,8 @@ def test_requesters_cannot_view_another_users_ticket(client):
     detail = client.get(f"/api/v1/tickets/{ticket['id']}", headers=second_headers)
     listing = client.get("/api/v1/tickets", headers=second_headers)
     assert detail.status_code == 404
-    assert listing.json()["items"] == []\n    assert listing.json()["total"] == 0
+    assert listing.json()["items"] == []
+    assert listing.json()["total"] == 0
 
 
 def test_agent_can_progress_ticket_and_requester_can_close_resolved_ticket(client):
