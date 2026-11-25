@@ -1,6 +1,3 @@
-from uuid import UUID
-
-
 PASSWORD = "a-very-long-test-password"
 
 
@@ -16,6 +13,8 @@ def register_and_login(client, email: str) -> tuple[dict, dict]:
 
 
 def set_role(client, user_id: str, role) -> None:
+    from uuid import UUID
+
     from service_desk_api.models.user import User
 
     with client.app.state.testing_session_factory() as session:
