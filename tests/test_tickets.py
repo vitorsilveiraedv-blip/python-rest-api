@@ -64,7 +64,7 @@ def test_requesters_cannot_view_another_users_ticket(client):
     detail = client.get(f"/api/v1/tickets/{ticket['id']}", headers=second_headers)
     listing = client.get("/api/v1/tickets", headers=second_headers)
     assert detail.status_code == 404
-    assert listing.json() == []
+    assert listing.json()["items"] == []\n    assert listing.json()["total"] == 0
 
 
 def test_agent_can_progress_ticket_and_requester_can_close_resolved_ticket(client):
@@ -128,3 +128,35 @@ def test_only_administrator_can_assign_and_assignee_must_be_agent(client):
     )
     assert assigned.status_code == 200
     assert assigned.json()["assigned_to_id"] == agent["id"]
+
+def test_ticket_listing_supports_pagination_and_filters(client):
+    _, headers = register_and_login(client, "paging@example.com")
+    create_ticket(client, headers)
+    second = client.post(
+        "/api/v1/tickets",
+        headers=headers,
+        json={
+            "title": "Printer is offline",
+            "description": "The shared office printer is not responding.",
+            "priority": "low",
+        },
+    )
+    assert second.status_code == 201
+
+    first_page = client.get("/api/v1/tickets?page=1&page_size=1", headers=headers)
+    assert first_page.status_code == 200
+    assert first_page.json()["total"] == 2
+    assert first_page.json()["page_size"] == 1
+    assert len(first_page.json()["items"]) == 1
+
+    filtered = client.get("/api/v1/tickets?priority=low", headers=headers)
+    assert filtered.status_code == 200
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["items"][0]["priority"] == "low"
+
+
+def test_ticket_listing_rejects_invalid_pagination(client):
+    _, headers = register_and_login(client, "invalid-page@example.com")
+    response = client.get("/api/v1/tickets?page=0&page_size=101", headers=headers)
+    assert response.status_code == 422
+
