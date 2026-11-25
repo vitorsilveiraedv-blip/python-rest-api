@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from service_desk_api.models.ticket import (
@@ -61,15 +61,37 @@ def create_ticket(
     return ticket
 
 
-def list_tickets(db: Session, actor: User) -> list[Ticket]:
-    statement = select(Ticket).order_by(Ticket.created_at.desc())
+def list_tickets(
+    db: Session,
+    actor: User,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    ticket_status: TicketStatus | None = None,
+    priority: TicketPriority | None = None,
+) -> tuple[list[Ticket], int]:
+    filters = []
     if actor.role == UserRole.REQUESTER:
-        statement = statement.where(Ticket.requester_id == actor.id)
+        filters.append(Ticket.requester_id == actor.id)
     elif actor.role == UserRole.AGENT:
-        statement = statement.where(
+        filters.append(
             (Ticket.assigned_to_id == actor.id) | (Ticket.assigned_to_id.is_(None))
         )
-    return list(db.scalars(statement).all())
+    if ticket_status is not None:
+        filters.append(Ticket.status == ticket_status)
+    if priority is not None:
+        filters.append(Ticket.priority == priority)
+
+    count_statement = select(func.count()).select_from(Ticket).where(*filters)
+    total = db.scalar(count_statement) or 0
+    statement = (
+        select(Ticket)
+        .where(*filters)
+        .order_by(Ticket.created_at.desc(), Ticket.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    return list(db.scalars(statement).all()), total
 
 
 def get_ticket_detail(
