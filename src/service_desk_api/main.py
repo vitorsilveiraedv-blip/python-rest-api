@@ -9,6 +9,7 @@ from service_desk_api.config import get_settings
 def create_app() -> FastAPI:
     """Build the application; keeping a factory makes tests isolated and predictable."""
     settings = get_settings()
+    settings.validate_security_settings()
     application = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
