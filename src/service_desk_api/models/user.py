@@ -10,7 +10,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from service_desk_api.database import Base
 
 
-
 class UserRole(StrEnum):
     """Roles supported by the service desk."""
 
