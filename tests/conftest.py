@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from service_desk_api.database import Base, get_db
 from service_desk_api.main import create_app
+from service_desk_api.models.ticket import Ticket, TicketComment, TicketEvent  # noqa: F401
 from service_desk_api.models.user import User  # noqa: F401
 
 
@@ -31,6 +32,7 @@ def client() -> TestClient:
 
     application = create_app()
     application.dependency_overrides[get_db] = override_get_db
+    application.state.testing_session_factory = TestingSessionLocal
     with TestClient(application) as test_client:
         yield test_client
     application.dependency_overrides.clear()
