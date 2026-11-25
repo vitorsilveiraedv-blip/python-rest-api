@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from service_desk_api.api.dependencies import get_current_user, require_roles
@@ -16,7 +16,10 @@ from service_desk_api.schemas.ticket import (
     TicketCommentRead,
     TicketCreate,
     TicketDetail,
+    TicketPage,
+    TicketPriority,
     TicketRead,
+    TicketStatus,
     TicketStatusUpdate,
 )
 from service_desk_api.services.tickets import (
@@ -48,12 +51,24 @@ def create(
     )
 
 
-@router.get("", response_model=list[TicketRead])
+@router.get("", response_model=TicketPage)
 def list_mine(
     actor: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
-) -> list[Ticket]:
-    return list_tickets(db, actor)
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    ticket_status: TicketStatus | None = None,
+    priority: TicketPriority | None = None,
+) -> TicketPage:
+    items, total = list_tickets(
+        db,
+        actor,
+        page=page,
+        page_size=page_size,
+        ticket_status=ticket_status,
+        priority=priority,
+    )
+    return TicketPage(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/{ticket_id}", response_model=TicketDetail)
