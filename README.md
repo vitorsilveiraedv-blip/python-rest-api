@@ -18,7 +18,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Validated ticket lifecycle transitions and requester close-out of resolved tickets.
 - Ticket comments and append-only audit event records.
 - Generic authentication errors that do not reveal whether an account exists.
-- Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service.
+- Versioned Alembic migrations for users, tickets, comments and audit events, applied automatically by the local Compose API service and validated against PostgreSQL 16 in CI.
 - Dockerfile and Docker Compose configuration for local PostgreSQL.
 - Pytest integration tests and Ruff linting in GitHub Actions.
 
@@ -43,6 +43,7 @@ A Python REST API for IT service desk operations, developed as a modular monolit
 - Production startup rejects the development JWT secret. Set a unique secret of at least 32 characters using `JWT_SECRET_KEY`.
 - The registration endpoint assigns the requester role. Privileged roles must never be self-assigned through public input.
 - Access tokens are currently stateless and there is no refresh-token or revocation endpoint yet.
+- Login rate limiting and account lockout policies are not implemented yet; they are required before exposing the service to untrusted public traffic.
 - Database schema changes are managed through Alembic. Apply migrations with `alembic upgrade head`; local Docker Compose runs this before starting the API.
 
 ## Technology
@@ -75,6 +76,7 @@ pytest --cov=service_desk_api --cov-report=term-missing
 - Never store plaintext passwords or expose secrets in logs.
 - Version database changes through migrations.
 - Test success paths, invalid input, permissions and dependency failures.
+- CI validates Alembic migrations against PostgreSQL 16; application integration tests currently use an isolated in-memory SQLite database.
 - Report only verified test and deployment results.
 
 ## License
