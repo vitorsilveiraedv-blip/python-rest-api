@@ -72,7 +72,9 @@ def list_tickets(db: Session, actor: User) -> list[Ticket]:
     return list(db.scalars(statement).all())
 
 
-def get_ticket_detail(db: Session, ticket_id: UUID, actor: User) -> tuple[Ticket, list[TicketComment], list[TicketEvent]]:
+def get_ticket_detail(
+    db: Session, ticket_id: UUID, actor: User
+) -> tuple[Ticket, list[TicketComment], list[TicketEvent]]:
     ticket = _visible_ticket(db, ticket_id, actor)
     comments = list(db.scalars(
         select(TicketComment).where(TicketComment.ticket_id == ticket.id)
@@ -125,7 +127,9 @@ def change_ticket_status(
         TicketStatus.CLOSED: set(),
     }
     if new_status not in allowed[ticket.status]:
-        raise TicketRuleError(f"Transition from {ticket.status.value} to {new_status.value} is not allowed")
+        raise TicketRuleError(
+            f"Transition from {ticket.status.value} to {new_status.value} is not allowed"
+        )
     if actor.role == UserRole.REQUESTER and not (
         ticket.status == TicketStatus.RESOLVED and new_status == TicketStatus.CLOSED
     ):
