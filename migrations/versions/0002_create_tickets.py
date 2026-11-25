@@ -63,7 +63,9 @@ def upgrade() -> None:
         sa.Column("actor_id", sa.Uuid(), nullable=False),
         sa.Column("event_type", sa.String(length=40), nullable=False),
         sa.Column("details", sa.String(length=500), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["ticket_id"], ["tickets.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["actor_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
