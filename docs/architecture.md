@@ -19,7 +19,7 @@ Failed login attempts are limited using PostgreSQL-backed counters. The system t
 
 The API uses `request.client.host` as the client IP. Deployments behind a reverse proxy must configure trusted proxy handling at the ASGI server or ingress layer; the application must not blindly trust arbitrary forwarded headers.
 
-Login rate limiting is a first layer of abuse protection, not a replacement for edge-level controls, monitoring, alerting or credential-stuffing detection.
+Login rate limiting is a first layer of abuse protection, not a replacement for edge-level controls, monitoring, alerting or credential-stuffing detection. Refresh tokens are cryptographically random opaque values. Only SHA-256 hashes are persisted. Each token belongs to a session family and is single-use: a successful refresh revokes the presented token and creates a replacement. Reuse of a previously rotated token revokes the entire family. Logout also revokes the complete family. Refresh attempts check that the user remains active. The session row is locked during rotation to prevent concurrent refreshes from both succeeding on PostgreSQL.
 
 ## Ticket workflow
 
@@ -31,7 +31,7 @@ Requesters can create and view their own tickets. Agents can view tickets assign
 - [x] Environment-based settings and production JWT secret validation
 - [x] PostgreSQL persistence and Alembic migrations
 - [x] Argon2 password hashing and JWT authentication
-- [x] Active-account checks and login rate limiting
+- [x] Active-account checks, persistent login rate limiting and refresh-token rotation/revocation
 - [x] Ticket lifecycle, visibility, assignment and audit events
 - [x] PostgreSQL migration validation and application integration tests in CI
 - [ ] Operational metrics, alerting and production deployment hardening
