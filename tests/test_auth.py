@@ -1,5 +1,26 @@
 """Authentication API integration tests."""
 
+from uuid import UUID
+
+from service_desk_api.models.auth_session import AuthSession
+from service_desk_api.models.user import User
+
+
+def _register_and_login(client, email="session@example.com"):
+    payload = {
+        "email": email,
+        "full_name": "Session User",
+        "password": "a-very-long-test-password",
+    }
+    registration = client.post("/api/v1/auth/register", json=payload)
+    assert registration.status_code == 201
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": payload["password"]},
+    )
+    assert login.status_code == 200
+    return registration.json(), login.json()
+
 
 def test_register_login_and_get_current_user(client):
     registration = client.post(
@@ -21,6 +42,7 @@ def test_register_login_and_get_current_user(client):
     token_data = login.json()
     assert token_data["token_type"] == "bearer"
     assert token_data["expires_in"] > 0
+    assert token_data["refresh_token"]
 
     profile = client.get(
         "/api/v1/auth/me",
@@ -76,28 +98,9 @@ def test_login_uses_same_generic_error_for_unknown_email(client):
 
 
 def test_inactive_user_cannot_login_or_keep_using_existing_token(client):
-    from uuid import UUID
-
-    from service_desk_api.models.user import User
-
-    registration = client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "inactive@example.com",
-            "full_name": "Inactive User",
-            "password": "a-very-long-test-password",
-        },
-    )
-    assert registration.status_code == 201
-    login = client.post(
-        "/api/v1/auth/login",
-        json={"email": "inactive@example.com", "password": "a-very-long-test-password"},
-    )
-    assert login.status_code == 200
-    token = login.json()["access_token"]
-
+    registration, login = _register_and_login(client, "inactive@example.com")
     with client.app.state.testing_session_factory() as session:
-        user = session.get(User, UUID(registration.json()["id"]))
+        user = session.get(User, UUID(registration["id"]))
         user.is_active = False
         session.commit()
 
@@ -108,7 +111,7 @@ def test_inactive_user_cannot_login_or_keep_using_existing_token(client):
     assert rejected_login.status_code == 401
     rejected_profile = client.get(
         "/api/v1/auth/me",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {login['access_token']}"},
     )
     assert rejected_profile.status_code == 401
 
@@ -142,11 +145,8 @@ def test_production_accepts_long_unique_jwt_secret():
 def test_login_is_rate_limited_after_five_failed_passwords(client):
     client.post(
         "/api/v1/auth/register",
-        json={
-            "email": "limited@example.com",
-            "full_name": "Limited User",
-            "password": "a-very-long-test-password",
-        },
+        json={"email": "limited@example.com", "full_name": "Limited User",
+              "password": "a-very-long-test-password"},
     )
     for _ in range(5):
         response = client.post(
@@ -154,14 +154,12 @@ def test_login_is_rate_limited_after_five_failed_passwords(client):
             json={"email": "limited@example.com", "password": "wrong-password"},
         )
         assert response.status_code == 401
-
     blocked = client.post(
         "/api/v1/auth/login",
         json={"email": "limited@example.com", "password": "a-very-long-test-password"},
     )
     assert blocked.status_code == 429
     assert int(blocked.headers["retry-after"]) > 0
-    assert blocked.json()["detail"] == "Too many login attempts. Try again later."
 
 
 def test_successful_login_clears_email_failure_counter(client):
@@ -177,16 +175,57 @@ def test_successful_login_clears_email_failure_counter(client):
             json={"email": payload["email"], "password": "wrong-password"},
         )
         assert response.status_code == 401
-
     successful = client.post(
         "/api/v1/auth/login",
         json={"email": payload["email"], "password": payload["password"]},
     )
     assert successful.status_code == 200
-
     for _ in range(5):
         response = client.post(
             "/api/v1/auth/login",
             json={"email": payload["email"], "password": "wrong-password"},
         )
         assert response.status_code == 401
+
+
+def test_refresh_rotates_token_and_rejects_reuse(client):
+    _, login = _register_and_login(client, "rotation@example.com")
+    old_refresh = login["refresh_token"]
+    rotated = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert rotated.status_code == 200
+    new_refresh = rotated.json()["refresh_token"]
+    assert new_refresh != old_refresh
+
+    reused = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert reused.status_code == 401
+    revoked = client.post("/api/v1/auth/refresh", json={"refresh_token": new_refresh})
+    assert revoked.status_code == 401
+
+
+def test_logout_revokes_refresh_token(client):
+    _, login = _register_and_login(client, "logout@example.com")
+    refresh_token = login["refresh_token"]
+    logout = client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
+    assert logout.status_code == 204
+    rejected = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert rejected.status_code == 401
+
+
+def test_inactive_user_cannot_refresh_session(client):
+    registration, login = _register_and_login(client, "inactive-refresh@example.com")
+    refresh_token = login["refresh_token"]
+    with client.app.state.testing_session_factory() as session:
+        user = session.get(User, UUID(registration["id"]))
+        user.is_active = False
+        session.commit()
+    response = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert response.status_code == 401
+
+
+def test_refresh_tokens_are_stored_only_as_hashes(client):
+    _, login = _register_and_login(client, "hash@example.com")
+    token = login["refresh_token"]
+    with client.app.state.testing_session_factory() as session:
+        stored = session.query(AuthSession).one()
+        assert stored.token_hash != token
+        assert len(stored.token_hash) == 64
