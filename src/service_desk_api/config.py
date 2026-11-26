@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr = SecretStr("development-only-change-this-secret-before-use")
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=20, ge=1, le=1440)
+    refresh_token_expire_days: int = Field(default=30, ge=1, le=365)
     jwt_issuer: str = "service-desk-api"
     jwt_audience: str = "service-desk-clients"
     login_email_max_attempts: int = Field(default=5, ge=1, le=100)
